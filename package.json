@@ -1,0 +1,32 @@
+{
+  "name": "composer",
+  "version": "1.0.0",
+  "description": "Entity Centric Log Aggregator",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run lint && npm run mocha",
+    "lint": "node_modules/.bin/eslint index.js lib/**/*.js",
+    "mocha": "node_modules/.bin/mocha --timeout 3000 ./tests/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tegud/composer.git"
+  },
+  "author": "Steve Elliott",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tegud/composer/issues"
+  },
+  "homepage": "https://github.com/tegud/composer#readme",
+  "devDependencies": {
+    "eslint": "^3.5.0",
+    "mocha": "^3.0.2",
+    "proxyquire": "^1.7.10",
+    "should": "^11.1.0"
+  },
+  "dependencies": {
+    "amqp": "^0.2.6",
+    "moment": "^2.15.0",
+    "redis": "^2.6.2"
+  }
+}
