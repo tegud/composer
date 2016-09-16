@@ -1,7 +1,7 @@
-var pmessageHandler;
-var subscribedEvents = {};
-
-var data = {};
+let pmessageHandler;
+let subscribedEvents = {};
+let internalSubscribedEvents = {};
+let data = {};
 
 function timeoutExpiry(key) {
 	if(subscribedEvents['__keyevent@0*__:expired']) {
@@ -9,21 +9,31 @@ function timeoutExpiry(key) {
 	}
 }
 
+function raiseInternalEvent(event, key, value) {
+	if(!internalSubscribedEvents[event]) {
+		return;
+	}
+
+	internalSubscribedEvents[event].forEach(handler => {
+		handler(key, value);
+	});
+}
+
 module.exports = {
 	createClient: function() {
-		var store = {};
-		var expiries = {};
+		let store = {};
+		let expiries = {};
 
 		console.log('Redis connection intercepted.');
 
 		return {
-			psubscribe: function(event) {
+			psubscribe: event => {
 				subscribedEvents[event] = true;
 			},
-			punsubscribe: function(event) {
+			punsubscribe: event => {
 				subscribedEvents[event] = false;
 			},
-			on: function(event, handler) {
+			on: (event, handler) => {
 				if(event === 'pmessage') {
 					pmessageHandler = handler;
 				}
@@ -32,27 +42,51 @@ module.exports = {
 					handler();
 				}
 			},
-			quit: function() {
+			quit: () => {
 				pmessageHandler = undefined;
 			},
-			set: function(key, value) {
+			set: (key, value) => {
 				store[key] = value;
+				raiseInternalEvent('key-set', key, value);
 			},
-			expire: function(key, timeout) {
+			expire: (key, timeout) => {
 				if(expiries[key]) {
 					clearTimeout(expiries[key]);
 				}
 
 				expiries[key] = setTimeout(timeoutExpiry.bind(undefined, key), timeout)
 			},
-			lrange: function(key, start, end, callback) {
+			lrange: (key, start, end, callback) => {
 				if(!start && end === -1) {
 					return callback(null, data[key]);
 				}
 
 				callback();
 			},
-			del: function(key) {
+			lpush: (key, value) => {
+				if(!store[key]) {
+					try {
+						console.log(`${store} ${key} ${store[key]}`);
+						store[key] = [value];
+						raiseInternalEvent('list-push', key, value);
+						console.log('2');
+						return;
+					}
+					catch (e) {
+						console.log(e);
+						return;
+					}
+				}
+
+				if(!store[key].push) {
+					console.logError('Cannot append to list on non list keys');
+					throw 'Cannot append to list on non list keys';
+				}
+
+				store[key].push(value);
+				raiseInternalEvent('list-push', key, value);
+			},
+			del: key => {
 
 			}
 		};
@@ -62,10 +96,20 @@ module.exports = {
 		timeoutExpiry(key);
 		resolve();
 	}),
-	setKeyData: function(key, keyData) {
+	on: (event, handler) => {
+		if(internalSubscribedEvents[event]) {
+			internalSubscribedEvents[event].push(handler);
+			return;
+		}
+
+		internalSubscribedEvents[event] = [handler];
+	},
+	setKeyData: (key, keyData) => {
 		data[key] = keyData;
 	},
-	clearData: function() {
+	clearData: () => {
 		data = {};
+		subscribedEvents = {};
+		internalSubscribedEvents = {};
 	}
 };
