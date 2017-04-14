@@ -21,7 +21,7 @@ function createConnectionIntercept(options) {
 }
 
 function generateConnectionKey(options) {
-	return options.host + ':' + (options.port || 5672);
+	return `${options.host}:${(options.port || 5672)}`;
 }
 
 function QueueIntercept(queueName, options) {
@@ -47,7 +47,7 @@ function QueueIntercept(queueName, options) {
 			}
 		},
 		publish: function(message) {
-			_.each(subscriptions, function(subscription) {
+			subscriptions.forEach(subscription => {
 				console.log('Sending message to subscriber', { message: message });
 				subscription.handler({ data: message });
 			});
@@ -115,7 +115,7 @@ function ConnectionIntercept(options) {
 							return console.log('No bound queues, message queued');
 						}
 
-						_.each(this.boundQueues, function(queue) {
+						this.boundQueues.forEach(queue => {
 							console.log('Publishing message to bound queue', { queue: queue });
 
 							queues[queue].publish(message);
