@@ -13,6 +13,19 @@ function setConfig(newConfig) {
     return new Promise(resolve => resolve(config = JSON.stringify(newConfig)));
 }
 
+function TestProcessor() {
+    return {
+        matches: () => true,
+        createKey: event => event.id,
+        aggregate: events => {
+            return Promise.resolve({
+                type: 'aggregatedObject',
+                text: events.map(event => event.text).join(',')
+            });
+        }
+    };
+}
+
 describe('composer', () => {
     let composerServer;
 
@@ -65,15 +78,16 @@ describe('composer', () => {
                 });
             });
 
-            composerServer.start().then(() => fakeRedis.sendKeyExpiry('key_1234'));
+            composerServer.start()
+                .then(() => fakeRedis.sendKeyExpiry('test_1234'));
 
             return amqpRecievedPromise.should.eventually.be.eql({
                 expiredEventTimeStamp: '2016-09-14T22:30:00Z',
-                aggregatorType: 'key',
+                aggregatorType: 'test',
                 expiredKey: "1234",
                 store: {
                     name: 'redis',
-                    eventListKey: 'key_list_1234'
+                    eventListKey: 'test_list_1234'
                 }
             });
         });
@@ -88,28 +102,118 @@ describe('composer', () => {
             })
         });
 
-        it('listens to rabbit mq events and stores in redis', () => {
-            setConfig({
-                redis: {},
-                amqpListen: {
-                    host: '127.0.0.1',
-                    exchange: 'composer-in'
-                }
-            });
+        describe('listens to rabbit mq events and stores in redis', () => {
+            describe('list entry', () => {
+                it('sets key', () => {
+                    setConfig({
+                        redis: {},
+                        amqpListen: {
+                            host: '127.0.0.1',
+                            exchange: 'composer-in'
+                        },
+                        processors: [
+                            { name: 'test', type: "test" }
+                        ]
+                    });
 
-            composerServer = new ComposerServer('store');
+                    composerServer = new ComposerServer('store');
 
-            const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
+                    const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
 
-            composerServer.start().then(() => {
-                inputExchange.publish('', JSON.stringify({ id: '12345' }));
-            });
+                    composerServer.registerProcessor('test', TestProcessor)
+                    .then(() => composerServer.start())
+                    .then(() => {
+                        inputExchange.publish('', JSON.stringify({ id: '12345' }));
+                    });
 
-            return new Promise(resolve => {
-                fakeRedis.on('list-push', (key, data) => {
-                    resolve(data);
+                    return new Promise(resolve => {
+                        fakeRedis.on('list-push', key => resolve(key));
+                    }).should.eventually.eql('test_list_12345');
                 });
-            }).should.eventually.eql('{"id":"12345"}');
+
+                it('it stores data', () => {
+                    setConfig({
+                        redis: {},
+                        amqpListen: {
+                            host: '127.0.0.1',
+                            exchange: 'composer-in'
+                        },
+                        processors: [
+                            { name: 'test', type: "test" }
+                        ]
+                    });
+
+                    composerServer = new ComposerServer('store');
+
+                    const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
+
+                    composerServer.registerProcessor('test', TestProcessor)
+                        .then(() => composerServer.start())
+                        .then(() => {
+                            inputExchange.publish('', JSON.stringify({ id: '12345' }));
+                        });
+
+                    return new Promise(resolve => {
+                        fakeRedis.on('list-push', (key, data) => resolve(data));
+                    }).should.eventually.eql('{"id":"12345"}');
+                });
+            });
+
+            describe('expiry entry', () => {
+                it('sets key', () => {
+                    setConfig({
+                        redis: {},
+                        amqpListen: {
+                            host: '127.0.0.1',
+                            exchange: 'composer-in'
+                        },
+                        processors: [
+                            { name: 'test', type: "test" }
+                        ]
+                    });
+
+                    composerServer = new ComposerServer('store');
+
+                    const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
+
+                    composerServer.registerProcessor('test', TestProcessor)
+                    .then(() => composerServer.start())
+                    .then(() => {
+                        inputExchange.publish('', JSON.stringify({ id: '12345' }));
+                    });
+
+                    return new Promise(resolve => {
+                        fakeRedis.on('key-set', key => resolve(key));
+                    }).should.eventually.eql('test_12345');
+                });
+
+                it('sets key expiry', () => {
+                    setConfig({
+                        redis: {},
+                        amqpListen: {
+                            host: '127.0.0.1',
+                            exchange: 'composer-in'
+                        },
+                        processors: [
+                            { name: 'test', type: "test" }
+                        ]
+                    });
+
+                    composerServer = new ComposerServer('store');
+
+                    const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
+
+                    composerServer.registerProcessor('test', TestProcessor)
+                    .then(() => composerServer.start())
+                    .then(() => {
+                        inputExchange.publish('', JSON.stringify({ id: '12345' }));
+                    });
+
+                    return new Promise(resolve => {
+                        fakeRedis.on('expiry-set', key => resolve(key));
+                    }).should.eventually.eql('test_12345');
+                });
+            });
         });
     });
 
@@ -150,20 +254,17 @@ describe('composer', () => {
 
             fakeRedis.setKeyData('12345', [JSON.stringify({ id: '12345', text: "a" }), JSON.stringify({ id: '12345', text: "b" })])
 
-            function TestProcessor() {
-                return {
-                    aggregate: events => {
-                        return Promise.resolve({
-                            type: 'aggregatedObject',
-                            text: events.map(event => event.text).join(',')
-                        });
-                    }
-                };
-            }
-
             composerServer.registerProcessor('test', TestProcessor)
                 .then(() => composerServer.start())
-                .then(() => inputExchange.publish('', JSON.stringify({ type: 'test', id: '12345' })));
+                .then(() => inputExchange.publish('', JSON.stringify({
+                    expiredEventTimeStamp: '2016-09-14T22:30:00Z',
+                    aggregatorType: 'test',
+                    expiredKey: "12345",
+                    store: {
+                        name: 'redis',
+                        eventListKey: 'key_list_12345'
+                    }
+                })));
 
             return amqpRecievedPromise.should.eventually.be.eql({
                 type: 'aggregatedObject',

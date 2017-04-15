@@ -55,6 +55,7 @@ module.exports = {
 				}
 
 				expiries[key] = setTimeout(timeoutExpiry.bind(undefined, key), timeout)
+				raiseInternalEvent('expiry-set', key, timeout);
 			},
 			lrange: (key, start, end, callback) => {
 				if(!start && end === -1) {
