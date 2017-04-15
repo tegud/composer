@@ -67,10 +67,8 @@ module.exports = {
 			lpush: (key, value) => {
 				if(!store[key]) {
 					try {
-						console.log(`${store} ${key} ${store[key]}`);
 						store[key] = [value];
 						raiseInternalEvent('list-push', key, value);
-						console.log('2');
 						return;
 					}
 					catch (e) {
@@ -93,7 +91,6 @@ module.exports = {
 		};
 	},
 	sendKeyExpiry: key => new Promise(resolve => {
-		console.log(`Sending expiry for key: ${key}`);
 		timeoutExpiry(key);
 		resolve();
 	}),

@@ -43,12 +43,10 @@ function QueueIntercept(queueName, options) {
 				subscriptions.push({ options: subscriptionOptions, handler: messageHandler });
 			},
 			shift: function() {
-				console.log('Subscriber acknowledged.');
 			}
 		},
 		publish: function(message) {
 			subscriptions.forEach(subscription => {
-				console.log('Sending message to subscriber', { message: message });
 				subscription.handler({ data: message });
 			});
 		}
@@ -85,7 +83,6 @@ function ConnectionIntercept(options) {
 					callback({
 						publish: function(routingKey, message) {
 							if(exchanges[name].messageInterceptor) {
-								console.log('Message Intercepted to exchange', { exchange: name });
 								exchanges[name].messageInterceptor(routingKey, { data: message });
 							}
 						}
@@ -93,8 +90,6 @@ function ConnectionIntercept(options) {
 				},
 				close: function() {},
 				on: function(eventName, handler) {
-					console.log('Client subscribed to event: ' + eventName);
-
 					eventEmitter.on(eventName, handler);
 				}
 			};

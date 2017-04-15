@@ -15,6 +15,9 @@ function setConfig(newConfig) {
 
 function TestProcessor() {
     return {
+        defaultConfig: {
+            timeout: 60000
+        },
         matches: () => true,
         createKey: event => event.id,
         aggregate: events => {
@@ -157,6 +160,37 @@ describe('composer', () => {
                         fakeRedis.on('list-push', (key, data) => resolve(data));
                     }).should.eventually.eql('{"id":"12345"}');
                 });
+
+                it('sets key expiry timeout to failsafe: 6hrs', () => {
+                    setConfig({
+                        redis: {},
+                        amqpListen: {
+                            host: '127.0.0.1',
+                            exchange: 'composer-in'
+                        },
+                        processors: [
+                            { name: 'test', type: "test" }
+                        ]
+                    });
+
+                    composerServer = new ComposerServer('store');
+
+                    const inputExchange = fakeAmqp.mock({ host: '127.0.0.1', port: 5672 }).exchange('composer-in');
+
+                    composerServer.registerProcessor('test', TestProcessor)
+                    .then(() => composerServer.start())
+                    .then(() => {
+                        inputExchange.publish('', JSON.stringify({ id: '12345' }));
+                    });
+
+                    return new Promise(resolve => {
+                        fakeRedis.on('expiry-set', (key, timeout) => {
+                            if(key === 'test_list_12345') {
+                                return resolve(timeout);
+                            }
+                        });
+                    }).should.eventually.eql(21600000);
+                });
             });
 
             describe('expiry entry', () => {
@@ -186,8 +220,8 @@ describe('composer', () => {
                         fakeRedis.on('key-set', key => resolve(key));
                     }).should.eventually.eql('test_12345');
                 });
-
-                it('sets key expiry', () => {
+                
+                it('sets key expiry timeout to processor default', () => {
                     setConfig({
                         redis: {},
                         amqpListen: {
@@ -210,8 +244,12 @@ describe('composer', () => {
                     });
 
                     return new Promise(resolve => {
-                        fakeRedis.on('expiry-set', key => resolve(key));
-                    }).should.eventually.eql('test_12345');
+                        fakeRedis.on('expiry-set', (key, timeout) => {
+                            if(key === 'test_12345') {
+                                return resolve(timeout);
+                            }
+                        });
+                    }).should.eventually.eql(60000);
                 });
             });
         });
