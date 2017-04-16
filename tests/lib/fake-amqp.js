@@ -16,7 +16,7 @@ function createConnectionIntercept(options) {
 		return interceptedConnections[generateConnectionKey(options)].createConnection(options);
 	}
 
-	console.log('Create Connection with no interception.', { key: connectionKey, interceptedKeys: Object.keys(interceptedConnections.join(',')) });
+	console.log('Create Connection with no interception.', { key: connectionKey, interceptedKeys: Object.keys(interceptedConnections).join(',') });
 	return originalCreateConnection(options);
 }
 

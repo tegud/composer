@@ -71,7 +71,7 @@ describe('composer', () => {
             fakeCurrentTime = '2016-09-14T22:30:00Z';
             setConfig({
                 redis: {},
-                amqpPublish: {
+                expiryQueue: {
                     host: '127.0.0.1',
                     exchange: 'composer-expired'
                 }
@@ -113,7 +113,7 @@ describe('composer', () => {
                 it('sets key', () => {
                     setConfig({
                         redis: {},
-                        amqpListen: {
+                        inputQueue: {
                             host: '127.0.0.1',
                             exchange: 'composer-in'
                         },
@@ -140,7 +140,7 @@ describe('composer', () => {
                 it('it stores data', () => {
                     setConfig({
                         redis: {},
-                        amqpListen: {
+                        inputQueue: {
                             host: '127.0.0.1',
                             exchange: 'composer-in'
                         },
@@ -167,7 +167,7 @@ describe('composer', () => {
                 it('sets key expiry timeout to failsafe: 6hrs', () => {
                     setConfig({
                         redis: {},
-                        amqpListen: {
+                        inputQueue: {
                             host: '127.0.0.1',
                             exchange: 'composer-in'
                         },
@@ -200,7 +200,7 @@ describe('composer', () => {
                 it('sets key', () => {
                     setConfig({
                         redis: {},
-                        amqpListen: {
+                        inputQueue: {
                             host: '127.0.0.1',
                             exchange: 'composer-in'
                         },
@@ -228,7 +228,7 @@ describe('composer', () => {
                     it('sets key expiry timeout to processor default', () => {
                         setConfig({
                             redis: {},
-                            amqpListen: {
+                            inputQueue: {
                                 host: '127.0.0.1',
                                 exchange: 'composer-in'
                             },
@@ -259,7 +259,7 @@ describe('composer', () => {
                     it('sets key expiry timeout to configured value', () => {
                         setConfig({
                             redis: {},
-                            amqpListen: {
+                            inputQueue: {
                                 host: '127.0.0.1',
                                 exchange: 'composer-in'
                             },
@@ -303,11 +303,11 @@ describe('composer', () => {
         it('listens to rabbit mq events, retrieves from redis and publishes aggregate object onto rabbit mq', () => {
             setConfig({
                 redis: {},
-                amqpListen: {
+                expiryQueue: {
                     host: '127.0.0.1',
                     exchange: 'composer-expired'
                 },
-                amqpPublish: {
+                completedQueue: {
                     host: '127.0.0.1',
                     exchange: 'composer-done'
                 },
