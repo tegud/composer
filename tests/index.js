@@ -26,7 +26,7 @@ function TestProcessor(processorConfig) {
         aggregate: events => {
             return Promise.resolve({
                 type: 'aggregatedObject',
-                text: events.map(event => event.text).join(',')
+                text: events.events.map(event => event.text).join(',')
             });
         }
     };
@@ -326,7 +326,7 @@ describe('composer', () => {
                 });
             });
 
-            fakeRedis.setKeyData('12345', [JSON.stringify({ id: '12345', text: "a" }), JSON.stringify({ id: '12345', text: "b" })])
+            fakeRedis.setKeyData('key_list_12345', [JSON.stringify({ id: '12345', text: "a" }), JSON.stringify({ id: '12345', text: "b" })])
 
             composerServer.registerProcessor('test', TestProcessor)
                 .then(() => composerServer.start())
