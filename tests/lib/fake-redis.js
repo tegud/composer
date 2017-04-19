@@ -57,6 +57,15 @@ module.exports = {
 				expiries[key] = setTimeout(timeoutExpiry.bind(undefined, key), timeout)
 				raiseInternalEvent('expiry-set', key, timeout);
 			},
+			pexpire: (key, timeout) => {
+				timeout = timeout / 1000;
+				if(expiries[key]) {
+					clearTimeout(expiries[key]);
+				}
+
+				expiries[key] = setTimeout(timeoutExpiry.bind(undefined, key), timeout)
+				raiseInternalEvent('expiry-set', key, timeout);
+			},
 			lrange: (key, start, end, callback) => {
 				if(!start && end === -1) {
 					return callback(null, data[key]);
